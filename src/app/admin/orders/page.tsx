@@ -15,6 +15,7 @@ export default function AdminOrders() {
     return localToday.toISOString().split("T")[0];
   });
   const [narratorEnabled, setNarratorEnabled] = useState(true);
+  const [mobileStatusTab, setMobileStatusTab] = useState("NEW");
   const prevOrdersRef = useRef<OrderData[]>([]);
 
   // TTS Narrator Announcer (speech synthesis)
@@ -221,6 +222,17 @@ export default function AdminOrders() {
   const shippedOrders = orders.filter((o) => o.status === "OUT_FOR_DELIVERY");
   const completedOrders = orders.filter((o) => o.status === "DELIVERED");
   const cancelledOrders = orders.filter((o) => ["REJECTED", "CANCELLED"].includes(o.status));
+  const mobileColumnClass = (tab: string) =>
+    mobileStatusTab === tab ? "flex" : "hidden lg:flex";
+
+  const mobileTabs = [
+    { id: "NEW", label: "New", count: newOrders.length, color: "text-red-400" },
+    { id: "KITCHEN", label: "Kitchen", count: preparingOrders.length, color: "text-primary" },
+    { id: "READY", label: "Ready", count: readyOrders.length, color: "text-accent" },
+    { id: "OUT", label: "Out", count: shippedOrders.length, color: "text-blue-400" },
+    { id: "DONE", label: "Done", count: completedOrders.length, color: "text-emerald-400" },
+    { id: "CANCELLED", label: "Cancel", count: cancelledOrders.length, color: "text-muted" },
+  ];
 
   if (loading) {
     return (
@@ -298,11 +310,34 @@ export default function AdminOrders() {
 
       </div>
 
+      {/* Mobile Status Tabs */}
+      <div className="lg:hidden bg-[#0b141a] border-b border-border/70 px-3 py-2 shrink-0 overflow-x-auto no-scrollbar">
+        <div className="flex gap-2 min-w-max">
+          {mobileTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setMobileStatusTab(tab.id)}
+              className={`h-10 px-3 rounded-lg border text-[11px] font-extrabold uppercase tracking-wide flex items-center gap-2 transition-all active:scale-95 ${
+                mobileStatusTab === tab.id
+                  ? "bg-[#202c33] border-primary/70 text-white shadow-md"
+                  : "bg-[#111b21] border-border/60 text-muted"
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span className={`px-1.5 py-0.5 rounded-md bg-white/10 text-[10px] ${tab.color}`}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Six-Column Kanban Grid */}
-      <div className="flex-1 overflow-x-auto p-6 flex gap-6 bg-[#0b141a] scroll-smooth md:snap-none snap-x snap-mandatory">
+      <div className="flex-1 overflow-x-auto p-3 sm:p-4 lg:p-6 flex gap-6 bg-[#0b141a] scroll-smooth md:snap-none snap-x snap-mandatory">
         
         {/* COLUMN 1: NEW */}
-        <div className="flex flex-col w-[85vw] sm:w-[300px] md:w-[320px] shrink-0 h-full snap-center">
+        <div className={`${mobileColumnClass("NEW")} flex-col w-full sm:w-[300px] md:w-[320px] shrink-0 h-full snap-center`}>
           <div className="flex items-center justify-between border-b-2 border-red-500/80 pb-2 mb-4 shrink-0">
             <h3 className="font-extrabold text-sm text-gray-200 tracking-wide uppercase flex items-center gap-2">
               🔴 New Orders 
@@ -323,7 +358,7 @@ export default function AdminOrders() {
         </div>
 
         {/* COLUMN 2: PREPARING */}
-        <div className="flex flex-col w-[85vw] sm:w-[300px] md:w-[320px] shrink-0 h-full snap-center">
+        <div className={`${mobileColumnClass("KITCHEN")} flex-col w-full sm:w-[300px] md:w-[320px] shrink-0 h-full snap-center`}>
           <div className="flex items-center justify-between border-b-2 border-primary pb-2 mb-4 shrink-0">
             <h3 className="font-extrabold text-sm text-gray-200 tracking-wide uppercase flex items-center gap-2">
               🔥 In Kitchen 
@@ -344,7 +379,7 @@ export default function AdminOrders() {
         </div>
 
         {/* COLUMN 3: READY */}
-        <div className="flex flex-col w-[85vw] sm:w-[300px] md:w-[320px] shrink-0 h-full snap-center">
+        <div className={`${mobileColumnClass("READY")} flex-col w-full sm:w-[300px] md:w-[320px] shrink-0 h-full snap-center`}>
           <div className="flex items-center justify-between border-b-2 border-accent pb-2 mb-4 shrink-0">
             <h3 className="font-extrabold text-sm text-gray-200 tracking-wide uppercase flex items-center gap-2">
               📦 Ready for Dispatch
@@ -365,7 +400,7 @@ export default function AdminOrders() {
         </div>
 
         {/* COLUMN 4: SHIPPED */}
-        <div className="flex flex-col w-[85vw] sm:w-[300px] md:w-[320px] shrink-0 h-full snap-center">
+        <div className={`${mobileColumnClass("OUT")} flex-col w-full sm:w-[300px] md:w-[320px] shrink-0 h-full snap-center`}>
           <div className="flex items-center justify-between border-b-2 border-blue-500 pb-2 mb-4 shrink-0">
             <h3 className="font-extrabold text-sm text-gray-200 tracking-wide uppercase flex items-center gap-2">
               🛵 Out for Delivery
@@ -386,7 +421,7 @@ export default function AdminOrders() {
         </div>
 
         {/* COLUMN 5: COMPLETED */}
-        <div className="flex flex-col w-[85vw] sm:w-[300px] md:w-[320px] shrink-0 h-full snap-center">
+        <div className={`${mobileColumnClass("DONE")} flex-col w-full sm:w-[300px] md:w-[320px] shrink-0 h-full snap-center`}>
           <div className="flex items-center justify-between border-b-2 border-emerald-600 pb-2 mb-4 shrink-0">
             <h3 className="font-extrabold text-sm text-gray-200 tracking-wide uppercase flex items-center gap-2">
               🎉 Delivered / Served
@@ -407,7 +442,7 @@ export default function AdminOrders() {
         </div>
 
         {/* COLUMN 6: CANCELLED */}
-        <div className="flex flex-col w-[85vw] sm:w-[300px] md:w-[320px] shrink-0 h-full snap-center">
+        <div className={`${mobileColumnClass("CANCELLED")} flex-col w-full sm:w-[300px] md:w-[320px] shrink-0 h-full snap-center`}>
           <div className="flex items-center justify-between border-b-2 border-muted pb-2 mb-4 shrink-0">
             <h3 className="font-extrabold text-sm text-gray-200 tracking-wide uppercase flex items-center gap-2">
               ❌ Rejected / Cancelled
