@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" role="img" aria-label="Mirch Masala Admin">
+  <rect width="192" height="192" rx="42" fill="#0d0f12"/>
+  <rect x="18" y="18" width="156" height="156" rx="34" fill="#ea580c"/>
+  <path d="M113 51c22 13 27 39 11 60-14 19-40 28-67 30 18-18 19-37 17-54-3-23 15-44 39-36Z" fill="#22c55e"/>
+  <path d="M73 129c25-6 45-20 48-44 2-15-4-27-15-34 21 3 39 24 34 48-5 27-32 47-67 55-12 3-21-3-23-12 8-4 16-8 23-13Z" fill="#991b1b" opacity=".42"/>
+  <path d="M71 139c28-4 52-20 59-45 5-19-3-35-17-43" fill="none" stroke="#fff7ed" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="68" cy="140" r="11" fill="#fff7ed"/>
+  <path d="M114 50c7-15 18-22 33-21" fill="none" stroke="#16a34a" stroke-width="11" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,180 @@
+// =========================================================================
+// Prisma Schema — Mirch Masala Unified WhatsApp Restaurant Ordering System
+// =========================================================================
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =========================================================================
+// Models
+// =========================================================================
+
+model Restaurant {
+  id           String         @id @default(uuid())
+  name         String         @default("Mirch Masala")
+  phone        String         @default("+919876543210")
+  address      String         @default("12, Spice Street, Culinary District, New Delhi, 110001")
+  taxRate      Decimal        @default(5.00) // 5% GST standard (removed @db.Decimal)
+  openingHours String         @default("11:00 AM - 11:00 PM")
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  orders       Order[]
+  bookings     TableBooking[]
+}
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String     @unique // e.g. "Starters (Veg)", "Biryanis"
+  slug        String     @unique // e.g. "starters-veg", "biryanis"
+  description String?
+  position    Int        @default(0) // For sorting in the menu list
+  menuItems   MenuItem[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model MenuItem {
+  id           String      @id @default(uuid())
+  name         String      @unique
+  description  String?
+  price        Decimal     // removed @db.Decimal
+  imageUrl     String?     // Optional URL of food image
+  isVegetarian Boolean     @default(true)
+  isAvailable  Boolean     @default(true)
+  position     Int         @default(0)
+  categoryId   String
+  category     Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Customer {
+  id              String                @id @default(uuid())
+  whatsappNumber  String                @unique // Key identifier (e.g. "919876543210")
+  name            String?
+  address         String?               // Primary delivery address
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  orders          Order[]
+  bookings        TableBooking[]
+  conversations   WhatsAppConversation?
+}
+
+model Order {
+  id              String              @id @default(uuid())
+  orderNo         String              @unique // Human-friendly readable format, e.g. "MM-1023"
+  customerId      String
+  customer        Customer            @relation(fields: [customerId], references: [id])
+  restaurantId    String
+  restaurant      Restaurant          @relation(fields: [restaurantId], references: [id])
+  status          String              @default("NEW") // Stored as string enum for app-level compatibility
+  deliveryType    String              // Stored as string (DELIVERY, PICKUP, DINE_IN)
+  deliveryAddress String?             // Captures address at the time of order
+  tableNumber     String?             // For Dine-in
+  notes           String?             // Customer's cooking notes
+  subtotal        Decimal             // removed @db.Decimal
+  tax             Decimal             // removed @db.Decimal
+  totalAmount     Decimal             // removed @db.Decimal
+  paymentStatus   String              @default("PENDING") // Stored as string (PENDING, PAID, FAILED, etc.)
+  idempotencyKey  String?             @unique // Guard against duplicate submissions
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  orderItems      OrderItem[]
+  statusHistory   OrderStatusHistory[]
+  payments        PaymentAttempt[]
+
+  @@index([status])
+  @@index([orderNo])
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity   Int
+  price      Decimal  // Locked price at purchase (removed @db.Decimal)
+  notes      String?  // Special prep instructions (e.g., "Make spicy")
+}
+
+model OrderStatusHistory {
+  id             String      @id @default(uuid())
+  orderId        String
+  order          Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  previousStatus String      // Stored as string enum for app-level compatibility
+  newStatus      String      // Stored as string enum for app-level compatibility
+  changedBy      String      // "SYSTEM", "STAFF_USERNAME", "CUSTOMER"
+  changedAt      DateTime    @default(now())
+  note           String?     // Explanation for status transition
+}
+
+model PaymentAttempt {
+  id             String        @id @default(uuid())
+  orderId        String
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount         Decimal       // removed @db.Decimal
+  method         String        @default("UPI") // "UPI", "CASH"
+  transactionRef String?       // UPI transaction reference or ID
+  status         String        @default("PENDING") // Stored as string enum for app-level compatibility
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model TableBooking {
+  id           String        @id @default(uuid())
+  bookingNo    String        @unique // Readable booking, e.g. "BK-1002"
+  customerId   String
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  restaurantId String
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id])
+  guestCount   Int
+  bookingDate  DateTime      // Chosen date
+  bookingTime  String        // Chosen time slot, e.g., "19:30"
+  status       String        @default("PENDING") // Stored as string (PENDING, APPROVED, etc.)
+  tableNo      String?       // Assigned table ID/number
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([bookingDate])
+}
+
+model WhatsAppConversation {
+  id                String   @id @default(uuid())
+  customerNumber    String   @unique
+  customer          Customer @relation(fields: [customerNumber], references: [whatsappNumber], onDelete: Cascade)
+  state             String   @default("START") // START, VIEW_CATEGORIES, etc.
+  currentCategoryId String?  // Active category context
+  activeCart        String?  // JSON string storing active basket: MenuItemId & quantity
+  updatedAt         DateTime @updatedAt
+}
+
+model WhatsAppMessageLog {
+  id             String           @id @default(uuid())
+  customerNumber String
+  direction      String           // Stored as string enum for app-level compatibility (INBOUND/OUTBOUND)
+  messageType    String           // "text", "button_reply", "list_reply", "image"
+  content        String           // Text content or parsed payload
+  rawPayload     String?          // Audit JSON payload dump
+  createdAt      DateTime         @default(now())
+
+  @@index([customerNumber])
+}
+
+model StaffUser {
+  id           String    @id @default(uuid())
+  username     String    @unique
+  passwordHash String    // Simple hash for dashboard login
+  role         String    @default("STAFF") // OWNER, KITCHEN, STAFF
+  name         String
+  createdAt    DateTime  @default(now())
+}
