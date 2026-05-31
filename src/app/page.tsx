@@ -1,33 +1,30 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { 
-  Bot, 
-  ShoppingBag, 
-  ShieldCheck, 
-  Flame, 
-  Compass, 
-  RefreshCw, 
-  Search, 
-  ChevronRight, 
-  Clock, 
-  MapPin, 
-  Utensils, 
-  Sparkles, 
-  BookOpen, 
-  HelpCircle, 
+import {
   ArrowRight,
-  Heart,
-  ChevronLeft,
-  CalendarCheck
+  Bot,
+  CalendarCheck,
+  CheckCircle2,
+  Clock,
+  MapPin,
+  MessageCircle,
+  Phone,
+  QrCode,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Truck,
+  Utensils,
 } from "lucide-react";
 
 interface MenuItem {
   id: string;
   name: string;
   price: string;
-  description: string;
+  description: string | null;
   isVegetarian: boolean;
   isAvailable: boolean;
 }
@@ -38,520 +35,538 @@ interface Category {
   menuItems: MenuItem[];
 }
 
+const WHATSAPP_NUMBER = "919296914511";
+const whatsappMenuLink = `https://wa.me/${WHATSAPP_NUMBER}?text=MENU`;
+const heroImage =
+  "https://images.unsplash.com/photo-1563379091339-03246963d51a?auto=format&fit=crop&w=1800&q=80";
+
+const signatureDishes = [
+  {
+    name: "Hyderabadi Chicken Biryani",
+    price: 360,
+    image: "https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=900&q=80",
+    note: "Long grain rice, layered masala, slow dum finish.",
+  },
+  {
+    name: "Paneer Tikka Shashlik",
+    price: 290,
+    image: "https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?auto=format&fit=crop&w=900&q=80",
+    note: "Smoky tandoor paneer with peppers and house chutney.",
+  },
+  {
+    name: "Royal Kesari Rasmalai",
+    price: 140,
+    image: "https://images.unsplash.com/photo-1601050690117-94f5f6fa8bd7?auto=format&fit=crop&w=900&q=80",
+    note: "Soft milk dumplings, saffron cream, pistachio finish.",
+  },
+];
+
+const agentFlow = [
+  {
+    title: "Scan Or Say Hi",
+    text: "Customer opens WhatsApp from QR or direct link.",
+    icon: QrCode,
+  },
+  {
+    title: "Chef Sanjay Bot",
+    text: "Buttons guide menu, cart, address, booking and payment.",
+    icon: Bot,
+  },
+  {
+    title: "Staff Control",
+    text: "Admin approves orders and can take over chat anytime.",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Kitchen Updates",
+    text: "Preparing, ready and delivery messages go back to customer.",
+    icon: Truck,
+  },
+];
+
+const statusSteps = ["NEW", "ACCEPTED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "DELIVERED"];
+
+function statusLabel(status: string) {
+  const labels: Record<string, string> = {
+    NEW: "Manager Review",
+    ACCEPTED: "Approved",
+    PREPARING: "Preparing",
+    READY: "Ready",
+    OUT_FOR_DELIVERY: "Out for Delivery",
+    DELIVERED: "Delivered",
+  };
+  return labels[status] || status;
+}
+
 export default function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
-  
-  // Live Tracker State
   const [orderNo, setOrderNo] = useState("");
   const [trackerLoading, setTrackerLoading] = useState(false);
   const [trackResult, setTrackResult] = useState<any>(null);
   const [trackError, setTrackError] = useState<string | null>(null);
 
-  // Culinary Trivia State
-  const [triviaIndex, setTriviaIndex] = useState(0);
-
-  // Load dynamic menu categories
   useEffect(() => {
     const loadMenu = async () => {
       try {
         const res = await fetch("/api/menu");
         const data = await res.json();
-        if (data.success && data.categories.length > 0) {
+        if (data.success && data.categories?.length) {
           setCategories(data.categories);
           setSelectedCatId(data.categories[0].id);
         }
-      } catch (e) {
-        console.error("Failed to load menu details:", e);
+      } catch (error) {
+        console.error("Failed to load menu:", error);
       }
     };
     loadMenu();
   }, []);
 
-  const handleTrackOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const activeCategory = useMemo(
+    () => categories.find((category) => category.id === selectedCatId),
+    [categories, selectedCatId]
+  );
+
+  const trackOrder = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!orderNo.trim()) return;
 
     setTrackerLoading(true);
-    setTrackError(null);
     setTrackResult(null);
+    setTrackError(null);
 
     try {
-      const res = await fetch(`/api/orders/tracker?orderNo=${orderNo.trim()}`);
+      const res = await fetch(`/api/orders/tracker?orderNo=${encodeURIComponent(orderNo.trim())}`);
       const data = await res.json();
-      if (data.success) {
-        setTrackResult(data.order);
-      } else {
-        setTrackError(data.error || "Order not found. Please verify number.");
+      if (!res.ok || !data.success) {
+        setTrackError(data.error || "Order not found.");
+        return;
       }
-    } catch (err) {
-      setTrackError("Failed to fetch order status. Check connection.");
+      setTrackResult(data.order);
+    } catch {
+      setTrackError("Tracker connect nahi ho paaya. Thodi der baad try karein.");
     } finally {
       setTrackerLoading(false);
     }
   };
 
-  const activeCategory = categories.find((c) => c.id === selectedCatId);
-
-  const getStatusProgress = (status: string) => {
-    const states = ["NEW", "ACCEPTED", "PREPARING", "READY", "DELIVERED"];
-    const index = states.indexOf(status.toUpperCase());
-    return {
-      step: index !== -1 ? index : 1,
-      name: status === "NEW" ? "Awaiting Review" : status === "ACCEPTED" ? "Approved" : status === "PREPARING" ? "Preparing" : status === "READY" ? "Ready" : "Completed",
-    };
-  };
-
-  const MadhubaniDivider = () => (
-    <div className="py-8 flex justify-center items-center select-none opacity-40">
-      <svg width="100%" height="24" viewBox="0 0 1200 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-amber-500/40 w-full max-w-6xl">
-        <path d="M0 12H1200" stroke="currentColor" strokeWidth="1.5" strokeDasharray="6 6" />
-        <polygon points="600,2 612,12 600,22 588,12" fill="currentColor" className="text-orange-500" />
-        <circle cx="600" cy="12" r="4" fill="#0b0f19" />
-        <path d="M565 12C575 4 580 20 590 12" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M635 12C625 4 620 20 610 12" stroke="currentColor" strokeWidth="1.5" />
-        <circle cx="545" cy="12" r="3.5" fill="currentColor" className="text-amber-600" />
-        <circle cx="655" cy="12" r="3.5" fill="currentColor" className="text-amber-600" />
-      </svg>
-    </div>
-  );
-
-  const spotlightDishes = [
-    {
-      name: "Champaran Handi Mutton (Ahuna)",
-      description: "Whole spice marinated tender mutton sealed with wheat dough in unglazed clay Handis, slow-roasted over charcoal fire for earthy, smoky flavor.",
-      price: 450,
-      tag: "Smoky Charcoal Slow Cook",
-      icon: "🍲",
-      image: "https://images.unsplash.com/photo-1544025162-d76694265947?w=500&auto=format&fit=crop&q=60"
-    },
-    {
-      name: "Traditional Desi Ghee Litti Chokha",
-      description: "Charcoal roasted wheat-flour balls stuffed with spice-infused Sattu, submerged in pure cow Ghee, served with spiced eggplant-tomato bharta.",
-      price: 180,
-      tag: "Bihar's National Culinary Pride",
-      icon: "🫓",
-      image: "https://images.unsplash.com/photo-1601050690597-df056fb4ce78?w=500&auto=format&fit=crop&q=60"
-    },
-    {
-      name: "Kesariya Makhana Kheer",
-      description: "Sweetened milk reduced for 4 hours with popped premium foxnuts (Makhana) from Mithila, saffron, cardamom, and green pistachios.",
-      price: 140,
-      tag: "Mithilanchal Festive Sweet",
-      icon: "🥣",
-      image: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=500&auto=format&fit=crop&q=60"
-    },
-    {
-      name: "Mithilanchal Thekua Platter",
-      description: "Crispy wheat flour and fennel dry-sweet biscuits sweetened with sugarcane jaggery, shaped using traditional wooden sanchas.",
-      price: 110,
-      tag: "Chhath Mahaparv Prasad Special",
-      icon: "🍪",
-      image: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500&auto=format&fit=crop&q=60"
-    }
-  ];
-
-  const triviaItems = [
-    {
-      title: "Why earthenware Handis?",
-      fact: "Champaran Mutton is cooked in unglazed clay pots. Clay is porous, allowing moisture and heat to circulate evenly. When slow-cooked over charcoal, it extracts mineral clay notes that give the mutton its signature rustic, earthy aroma."
-    },
-    {
-      title: "The magic of Sattu in Litti",
-      fact: "Sattu is roasted chickpea flour. In Bihar, it is combined with mustard oil, lemon juice, ajwain, kalonji, and crushed garlic. Roasted over charcoal embers, the Sattu inside expands, making Litti light and extremely nutritious!"
-    },
-    {
-      title: "Mithila's Foxnut (Makhana) Legacy",
-      fact: "Over 85% of India's Makhana is grown in the wetlands of Mithilanchal, Bihar. Historically considered a royal food of gods, our Kesariya Makhana Kheer uses freshly popped local foxnuts slow-reduced for 4 hours."
-    }
-  ];
+  const activeStatusIndex = trackResult
+    ? Math.max(statusSteps.indexOf(String(trackResult.status).toUpperCase()), 0)
+    : -1;
 
   return (
-    <div className="min-h-screen bg-[#090e11] text-gray-200 flex flex-col font-sans selection:bg-[#c25e2e] selection:text-white relative overflow-x-hidden">
-      
-      {/* GLOWING AMBIENT GRAPHICS - Terracotta Saffron Themed */}
-      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-gradient-to-tr from-[#c25e2e]/10 to-[#d97706]/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/2 right-1/4 w-[400px] h-[400px] bg-gradient-to-tr from-[#d97706]/5 to-[#c25e2e]/5 rounded-full blur-[120px] pointer-events-none" />
+    <div className="min-h-screen bg-[#f8f3ea] text-[#1e1c18] selection:bg-emerald-700 selection:text-white">
+      <header className="sticky top-0 z-50 border-b border-black/10 bg-[#fffaf0]/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <a href="#" className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-[#213f32] text-xl text-white shadow-sm">
+              🌶️
+            </span>
+            <span>
+              <span className="block text-base font-black tracking-wide sm:text-lg">Mirch Masala</span>
+              <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#8a3b24]">
+                WhatsApp Restaurant
+              </span>
+            </span>
+          </a>
 
-      {/* HEADER NAVIGATION */}
-      <header className="border-b border-border/40 bg-[#0c1317]/80 backdrop-blur-md sticky top-0 z-50 p-4 shrink-0 shadow-md">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl shadow-lg animate-pulse" title="Clay Pot Delights">🍲</span>
-            <div>
-              <h1 className="text-lg font-black tracking-tight bg-gradient-to-r from-amber-400 via-[#e06d34] to-[#f97316] bg-clip-text text-transparent flex items-center gap-2">
-                Mirch Masala Restaurant
-                <span className="text-[10px] text-amber-500 font-extrabold uppercase border border-amber-500/20 px-1.5 py-0.5 rounded">Mithila & Magadh</span>
-              </h1>
-              <p className="text-[10px] text-muted tracking-wider uppercase font-semibold">Authentic Bihar Regional Kitchen</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <Link
-              href="/admin/orders"
-              className="bg-[#182229]/80 hover:bg-[#202c33] hover:border-border/80 text-muted hover:text-gray-100 border border-border px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-md"
-            >
-              ⚙️ Admin Console
-            </Link>
-          </div>
+          <nav className="hidden items-center gap-5 text-xs font-extrabold uppercase tracking-wide text-[#4d473d] md:flex">
+            <a href="#order" className="hover:text-[#8a3b24]">Order</a>
+            <a href="#menu" className="hover:text-[#8a3b24]">Menu</a>
+            <a href="#tracker" className="hover:text-[#8a3b24]">Track</a>
+            <Link href="/login" className="hover:text-[#8a3b24]">Admin</Link>
+          </nav>
+
+          <a
+            href={whatsappMenuLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-[#128c58] px-4 text-xs font-black uppercase tracking-wide text-white shadow-sm transition hover:bg-[#0f784c] active:scale-95"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Order
+          </a>
         </div>
       </header>
 
-      {/* MAIN CONTAINER */}
-      <main className="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6 space-y-12">
-        
-        {/* HERO SECTION */}
-        <section className="bg-gradient-to-br from-[#121c21]/90 to-[#0c1317]/95 border border-border/50 rounded-3xl p-6 md:p-12 backdrop-blur-sm relative overflow-hidden flex flex-col md:flex-row items-center gap-8 shadow-2xl">
-          
-          <div className="absolute top-0 right-0 h-40 w-40 bg-gradient-to-br from-[#c25e2e]/20 to-transparent rounded-full blur-[80px] pointer-events-none" />
+      <main>
+        <section className="relative min-h-[74svh] overflow-hidden bg-[#14110e] text-white">
+          <img
+            src={heroImage}
+            alt="Fresh biryani and restaurant food at Mirch Masala"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/20" />
+          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#f8f3ea] to-transparent" />
 
-          <div className="flex-1 space-y-6 text-center md:text-left z-10">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#c25e2e]/10 border border-[#c25e2e]/30 text-[#e06d34] rounded-full text-xs font-extrabold uppercase tracking-wider select-none">
-              <Flame className="h-3.5 w-3.5 text-[#e06d34] animate-pulse" /> Traditional Clay-Pot Feasts
-            </div>
-            
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-tight">
-              🙏 प्रणाम! रउआ सभ के स्वागत बा! <br />
-              <span className="bg-gradient-to-r from-amber-400 via-[#e06d34] to-orange-500 bg-clip-text text-transparent">
-                Desi Ghee Litti & Champaran Handi Meats
-              </span>
-            </h2>
-
-            <p className="text-muted text-sm md:text-base max-w-xl leading-relaxed">
-              Experience the ancient culinary legacy of Mithilanchal and Magadh! Slow earthenware wood-charcoal dum mutton, ghee-soaked hand-roasted littis, and sweet saffron treats prepared with ancestral spices by Chef Sanjay. Order completely on WhatsApp!
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center gap-4 justify-center md:justify-start">
-              <a
-                href="https://wa.me/919296914511?text=MENU"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-[#c25e2e] via-orange-500 to-[#f97316] hover:from-[#d56b37] hover:to-[#ff7f24] text-white font-extrabold rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xl shadow-[#c25e2e]/20"
-              >
-                💬 Swagat Ba! Order on WhatsApp
-              </a>
-              <a
-                href="#spotlight"
-                className="w-full sm:w-auto px-8 py-4 bg-[#122029]/60 hover:bg-[#182a35] border border-border/80 text-muted font-bold rounded-2xl flex items-center justify-center gap-1.5 transition-all active:scale-95"
-              >
-                <Utensils className="h-4 w-4 text-[#e06d34]" /> Bihari Specialties
-              </a>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-border/20 max-w-md mx-auto md:mx-0 select-none">
-              <div className="text-center md:text-left">
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Active Hours</h4>
-                <p className="text-xs text-[#e06d34] font-bold flex items-center gap-1 justify-center md:justify-start"><Clock className="h-3 w-3" /> 11:00 AM - 11 PM</p>
+          <div className="relative mx-auto flex min-h-[74svh] max-w-7xl items-center px-4 py-12 sm:px-6">
+            <div className="max-w-3xl">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] backdrop-blur">
+                <Sparkles className="h-4 w-4 text-[#f6c453]" />
+                Chef Sanjay Live On WhatsApp
               </div>
-              <div className="text-center md:text-left">
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Region Origin</h4>
-                <p className="text-xs text-[#e06d34] font-bold flex items-center gap-1 justify-center md:justify-start"><MapPin className="h-3 w-3" /> Bihar Cuisine</p>
-              </div>
-              <div className="text-center md:text-left">
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Standard</h4>
-                <p className="text-xs text-emerald-400 font-bold flex items-center gap-1 justify-center md:justify-start"><ShieldCheck className="h-3.5 w-3.5" /> 100% Unglazed Clay</p>
-              </div>
-            </div>
-          </div>
 
-          {/* DYNAMIC VISUAL ORDER TRACKER PORTLET */}
-          <div className="w-full md:w-80 bg-[#0c1317]/80 border border-border/60 p-6 rounded-3xl backdrop-blur-md shadow-2xl z-10 flex flex-col gap-4">
-            <div>
-              <h3 className="text-sm font-extrabold uppercase tracking-wide text-[#e06d34] flex items-center gap-2">
-                <ShoppingBag className="h-4 w-4" /> Order Status Tracker
-              </h3>
-              <p className="text-[10px] text-muted">Search preparation progress inside database</p>
-            </div>
-
-            <form onSubmit={handleTrackOrder} className="flex gap-2">
-              <input
-                type="text"
-                value={orderNo}
-                onChange={(e) => setOrderNo(e.target.value)}
-                placeholder="Enter Order # (e.g. MM-1024)"
-                className="flex-grow bg-[#122029] border border-border px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-[#c25e2e] focus:ring-1 focus:ring-[#c25e2e]/20 text-gray-200 uppercase font-mono"
-              />
-              <button
-                type="submit"
-                disabled={trackerLoading}
-                className="p-2 bg-[#c25e2e] hover:bg-[#d56b37] disabled:opacity-50 text-white font-bold rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-md"
-              >
-                {trackerLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-              </button>
-            </form>
-
-            {/* Tracker Result Display */}
-            {trackResult && (
-              <div className="mt-2 bg-[#122029]/60 border border-border/40 p-4 rounded-2xl flex flex-col gap-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] uppercase font-bold text-muted">Order: #{trackResult.orderNo}</span>
-                  <span className="px-2 py-0.5 rounded-full bg-[#c25e2e]/10 text-[#e06d34] text-[9px] font-extrabold border border-[#c25e2e]/20 font-mono">
-                    {getStatusProgress(trackResult.status).name}
-                  </span>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="w-full bg-[#0c1317] h-1.5 rounded-full overflow-hidden flex gap-0.5 p-0.5 border border-border/20">
-                  {[1, 2, 3, 4, 5].map((stepIdx) => {
-                    const activeStep = getStatusProgress(trackResult.status).step;
-                    const isActive = stepIdx <= activeStep + 1;
-                    return (
-                      <div
-                        key={stepIdx}
-                        className={`h-full flex-1 rounded-full transition-all ${
-                          isActive ? "bg-gradient-to-r from-amber-500 to-[#c25e2e]" : "bg-[#182229]"
-                        }`}
-                      />
-                    );
-                  })}
-                </div>
-
-                <div className="flex flex-col gap-1.5 text-xs text-gray-300 pt-1 border-t border-[#0c1317]">
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-muted">Payment Status</span>
-                    <span className="font-semibold text-emerald-400 uppercase">{trackResult.paymentStatus}</span>
-                  </div>
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-muted">Method</span>
-                    <span className="font-semibold">{trackResult.deliveryType}</span>
-                  </div>
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-muted">Total Paid</span>
-                    <span className="font-bold text-[#e06d34]">₹{trackResult.total.toFixed(0)}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {trackError && (
-              <p className="mt-2 text-rose-500 text-xs font-semibold bg-rose-950/20 border border-rose-950/30 p-3 rounded-2xl flex items-center gap-1.5">
-                ⚠️ {trackError}
+              <h1 className="max-w-3xl text-4xl font-black leading-[1.02] tracking-normal sm:text-6xl lg:text-7xl">
+                Mirch Masala Restaurant
+              </h1>
+                <p className="mt-5 max-w-2xl text-base font-medium leading-7 text-white/80 sm:text-lg">
+                Order biryani, tandoori, sweets and table bookings directly inside WhatsApp. The bot takes the order, staff approves it, kitchen updates the customer.
               </p>
-            )}
+
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <a
+                  href={whatsappMenuLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#128c58] px-7 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-black/20 transition hover:bg-[#0f784c] active:scale-95"
+                >
+                  Start WhatsApp Order
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+                <a
+                  href="#order"
+                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-white/30 bg-white/10 px-7 text-sm font-black uppercase tracking-wide text-white backdrop-blur transition hover:bg-white/20 active:scale-95"
+                >
+                  Scan QR Code
+                  <QrCode className="h-4 w-4" />
+                </a>
+              </div>
+
+              <div className="mt-8 grid max-w-2xl grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+                <div className="border-l-2 border-[#f6c453] pl-3">
+                  <span className="block text-xs font-bold uppercase text-white/55">Open</span>
+                  <span className="font-black">11 AM - 11 PM</span>
+                </div>
+                <div className="border-l-2 border-[#128c58] pl-3">
+                  <span className="block text-xs font-bold uppercase text-white/55">Payment</span>
+                  <span className="font-black">UPI, Card, COD</span>
+                </div>
+                <div className="border-l-2 border-[#5d8fd3] pl-3">
+                  <span className="block text-xs font-bold uppercase text-white/55">Updates</span>
+                  <span className="font-black">Live food status</span>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        <MadhubaniDivider />
-
-        {/* CULINARY SPOTLIGHT SECTION */}
-        <section id="spotlight" className="space-y-6">
-          <div className="text-center space-y-2">
-            <h2 className="text-xs font-extrabold uppercase tracking-widest text-[#e06d34] flex items-center justify-center gap-2">
-              <Sparkles className="h-4 w-4 text-[#e06d34] animate-pulse" /> Rasoiya Sanjay's Signature Feast
-            </h2>
-            <h3 className="text-2xl md:text-3xl font-black text-gray-100">Bihari Culinary Spotlight Showcase</h3>
-            <p className="text-muted text-xs md:text-sm max-w-lg mx-auto">Discover the absolute best specialties of the region. Tap to order directly on WhatsApp instantly.</p>
+        <section id="order" className="mx-auto -mt-6 grid max-w-7xl gap-4 px-4 pb-10 sm:px-6 lg:grid-cols-3">
+          <div className="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-lg bg-[#213f32] text-white">
+                <QrCode className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-black">Scan To Chat</h2>
+                <p className="text-xs font-semibold text-[#6c6255]">Camera se scan, WhatsApp open.</p>
+              </div>
+            </div>
+            <img
+              src="/mirch-masala-whatsapp-qr.png"
+              alt="Mirch Masala WhatsApp QR code"
+              className="mx-auto h-44 w-44 rounded-lg border border-black/10 bg-white p-2"
+            />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 pt-4">
-            {spotlightDishes.map((dish, idx) => (
-              <div 
-                key={idx}
-                className="bg-[#121c21]/80 border border-border/60 hover:border-[#c25e2e]/60 rounded-3xl p-5 flex flex-col justify-between gap-4 transition-all duration-300 shadow-xl group hover:shadow-2xl hover:shadow-[#c25e2e]/5 relative overflow-hidden"
+          <div className="rounded-lg border border-black/10 bg-[#213f32] p-5 text-white shadow-sm">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-black">Direct WhatsApp Link</h2>
+                <p className="text-xs font-semibold text-white/65">No app download for customer.</p>
+              </div>
+              <Phone className="h-5 w-5 text-[#f6c453]" />
+            </div>
+            <p className="break-all rounded-lg border border-white/15 bg-white/10 p-3 font-mono text-xs text-white/85">
+              wa.me/{WHATSAPP_NUMBER}?text=MENU
+            </p>
+            <a
+              href={whatsappMenuLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-white text-xs font-black uppercase tracking-wide text-[#213f32] transition hover:bg-[#f6c453] active:scale-95"
+            >
+              Open Chat Now
+              <MessageCircle className="h-4 w-4" />
+            </a>
+          </div>
+
+          <div className="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-black">Why Customers Like It</h2>
+            <div className="mt-4 space-y-3">
+              {[
+                "Buttons instead of long typing",
+                "Razorpay link during online payment",
+                "Food preparing, ready and delivery updates",
+                "Staff can jump in when needed",
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-2 text-sm font-semibold text-[#4d473d]">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#128c58]" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[#213f32] py-14 text-white">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#f6c453]">Agent Workflow</p>
+                <h2 className="mt-2 max-w-2xl text-3xl font-black tracking-normal sm:text-4xl">
+                  Bot, staff and kitchen work together.
+                </h2>
+              </div>
+              <Link
+                href="/login"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/20 px-5 text-xs font-black uppercase tracking-wide transition hover:bg-white/10"
               >
-                {/* Spotlight indicator tag */}
-                <div className="absolute top-3 left-3 bg-[#c25e2e] text-white text-[8px] font-black tracking-wider uppercase px-2 py-0.5 rounded shadow z-10">
-                  {dish.tag}
-                </div>
+                Admin Login
+                <ShieldCheck className="h-4 w-4" />
+              </Link>
+            </div>
 
-                <div className="relative h-[160px] w-full bg-[#0c1317] rounded-2xl overflow-hidden border border-border/40 shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={dish.image}
-                    alt={dish.name}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  <span className="absolute bottom-2 right-2 text-2xl bg-[#121c21]/95 px-2 py-1 rounded-xl border border-border/40 select-none shadow">
-                    {dish.icon}
-                  </span>
-                </div>
+            <div className="grid gap-4 md:grid-cols-4">
+              {agentFlow.map((step, index) => {
+                const Icon = step.icon;
+                return (
+                  <div key={step.title} className="rounded-lg border border-white/15 bg-white/10 p-5">
+                    <div className="mb-5 flex items-center justify-between">
+                      <Icon className="h-6 w-6 text-[#f6c453]" />
+                      <span className="font-mono text-xs font-black text-white/45">0{index + 1}</span>
+                    </div>
+                    <h3 className="text-sm font-black uppercase tracking-wide">{step.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-white/70">{step.text}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
 
-                <div className="space-y-2">
-                  <h4 className="font-extrabold text-gray-100 text-sm tracking-wide group-hover:text-[#e06d34] transition-colors">{dish.name}</h4>
-                  <p className="text-muted text-[11px] leading-relaxed line-clamp-3 min-h-[50px]">{dish.description}</p>
-                </div>
+        <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
+          <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-[#8a3b24]">Signature Picks</p>
+              <h2 className="mt-2 text-3xl font-black tracking-normal sm:text-4xl">Food worth opening WhatsApp for.</h2>
+            </div>
+            <a href="#menu" className="inline-flex h-11 items-center gap-2 rounded-full border border-black/15 px-5 text-xs font-black uppercase tracking-wide transition hover:bg-white">
+              See Full Menu
+              <Utensils className="h-4 w-4" />
+            </a>
+          </div>
 
-                <div className="border-t border-border/40 pt-3 mt-1 flex justify-between items-center shrink-0">
-                  <span className="font-black text-sm text-[#e06d34] font-mono">₹{dish.price}</span>
+          <div className="grid gap-5 md:grid-cols-3">
+            {signatureDishes.map((dish) => (
+              <article key={dish.name} className="overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm">
+                <img src={dish.image} alt={dish.name} className="h-52 w-full object-cover" />
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-lg font-black">{dish.name}</h3>
+                    <span className="rounded-full bg-[#f6c453]/25 px-3 py-1 font-mono text-sm font-black text-[#8a3b24]">
+                      ₹{dish.price}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-[#6c6255]">{dish.note}</p>
                   <a
-                    href={`https://wa.me/919296914511?text=add%20${encodeURIComponent(dish.name)}`}
+                    href={`https://wa.me/${WHATSAPP_NUMBER}?text=add%20${encodeURIComponent(dish.name)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[10px] font-black text-white bg-gradient-to-r from-[#c25e2e] to-orange-500 hover:from-[#d56b37] hover:to-[#ff7f24] px-3.5 py-2 rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-1"
+                    className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-[#1e1c18] px-4 text-xs font-black uppercase tracking-wide text-white transition hover:bg-[#8a3b24] active:scale-95"
                   >
-                    <span>Order Now</span>
-                    <ChevronRight className="h-3 w-3" />
+                    Add In WhatsApp
+                    <ArrowRight className="h-4 w-4" />
                   </a>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         </section>
 
-        {/* TRIVIA PORTLET & TABLE BOOKINGS PROMOTION */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-6">
-          
-          {/* LEFT PANEL: Dynamic Bihar Culinary Trivia */}
-          <div className="lg:col-span-6 bg-gradient-to-br from-[#121c21]/90 to-[#0c1317]/95 border border-border/60 p-6 rounded-3xl flex flex-col justify-between min-h-[220px] shadow-xl relative overflow-hidden select-none">
-            <div className="absolute top-[-20%] right-[-20%] h-32 w-32 bg-[#c25e2e]/10 rounded-full blur-3xl pointer-events-none" />
-            
+        <section id="tracker" className="bg-[#efe3d0] py-14">
+          <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
-              <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 inline-block mb-3.5">
-                📖 Did You Know? Bihari Culinary Trivia
-              </span>
-              <h4 className="text-base font-black text-gray-100 tracking-wide mb-2 flex items-center gap-1.5">
-                💡 {triviaItems[triviaIndex].title}
-              </h4>
-              <p className="text-muted text-xs leading-relaxed max-w-xl transition-all duration-300">
-                {triviaItems[triviaIndex].fact}
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-[#8a3b24]">Live Order Tracker</p>
+              <h2 className="mt-2 text-3xl font-black tracking-normal sm:text-4xl">
+                Customers can check order status anytime.
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-[#6c6255]">
+                Enter an order number and see if it is under manager review, preparing, ready, out for delivery or delivered.
               </p>
             </div>
 
-            <div className="flex justify-between items-center border-t border-border/30 pt-4 mt-4 shrink-0">
-              <span className="text-[10px] text-muted font-bold font-mono">Fact {triviaIndex + 1} of 3</span>
-              <div className="flex gap-2">
+            <div className="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+              <form onSubmit={trackOrder} className="flex gap-2">
+                <input
+                  value={orderNo}
+                  onChange={(event) => setOrderNo(event.target.value)}
+                  placeholder="MM-260531-ABC123"
+                  className="h-12 min-w-0 flex-1 rounded-lg border border-black/15 bg-[#fffaf0] px-3 font-mono text-sm font-bold uppercase outline-none transition focus:border-[#128c58]"
+                />
                 <button
-                  onClick={() => setTriviaIndex((prev) => (prev === 0 ? 2 : prev - 1))}
-                  className="p-1.5 bg-[#122029] hover:bg-border text-muted hover:text-gray-200 rounded-lg transition-all border border-border/20 active:scale-95"
-                  title="Previous Fact"
+                  type="submit"
+                  disabled={trackerLoading}
+                  className="grid h-12 w-12 place-items-center rounded-lg bg-[#213f32] text-white transition hover:bg-[#128c58] disabled:opacity-50"
+                  title="Track order"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  {trackerLoading ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
                 </button>
-                <button
-                  onClick={() => setTriviaIndex((prev) => (prev === 2 ? 0 : prev + 1))}
-                  className="p-1.5 bg-[#122029] hover:bg-border text-muted hover:text-gray-200 rounded-lg transition-all border border-border/20 active:scale-95"
-                  title="Next Fact"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
+              </form>
 
-          {/* RIGHT PANEL: Clay-pot Dining & Table Bookings Invite */}
-          <div className="lg:col-span-6 bg-gradient-to-br from-[#121c21]/90 to-[#0c1317]/95 border border-border/60 p-6 rounded-3xl flex flex-col justify-between min-h-[220px] shadow-xl relative overflow-hidden">
-            <div className="absolute bottom-[-25%] left-[-15%] h-36 w-36 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
-            
-            <div>
-              <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 inline-block mb-3.5">
-                📅 Dine-In Reservation Desk
-              </span>
-              <h4 className="text-base font-black text-gray-100 tracking-wide mb-2 flex items-center gap-1.5">
-                🏺 Book a Traditional Earthen Dining Table
-              </h4>
-              <p className="text-muted text-xs leading-relaxed max-w-xl">
-                Planning a family feast? Secure your traditional dine-in tableside booking instantly! Enjoy slow-cooked Handi curries served hot in authentic clay cookware with pure clay drinking cups (Kulhars).
-              </p>
-            </div>
-
-            <div className="pt-4 border-t border-border/30 mt-4 shrink-0 flex items-center justify-between flex-wrap gap-3">
-              <span className="text-[10px] text-muted font-bold flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-[#e06d34]" /> Family Seating Up to 15 Guests</span>
-              <a
-                href="https://wa.me/919296914511?text=Reserve%20a%20table%20for%204%20guests"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl active:scale-95 transition-all shadow-md flex items-center gap-1.5"
-              >
-                <CalendarCheck className="h-4 w-4" /> Book Table on WhatsApp
-              </a>
-            </div>
-          </div>
-
-        </section>
-
-        <MadhubaniDivider />
-
-        {/* DYNAMIC FOOD MENU SECTION */}
-        <section id="menu" className="space-y-6 pt-2">
-          <div className="text-center space-y-2">
-            <h2 className="text-xs font-extrabold uppercase tracking-widest text-[#e06d34] flex items-center justify-center gap-2">
-              <Compass className="h-4 w-4" /> Clay-Oven Curated Selection
-            </h2>
-            <h3 className="text-2xl md:text-3xl font-black text-gray-100">Explore Our Full Restaurant Menu</h3>
-            <p className="text-muted text-xs md:text-sm max-w-md mx-auto">Select categories to inspect pricing, descriptions, and custom prep options.</p>
-          </div>
-
-          {/* Category Tabs */}
-          {categories.length > 0 && (
-            <div className="flex overflow-x-auto justify-start md:justify-center gap-2 py-2 px-4 md:px-0 scrollbar-none border-b border-border/20">
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCatId(cat.id)}
-                  className={`px-5 py-2.5 rounded-full text-xs font-bold tracking-wide transition-all shrink-0 active:scale-95 ${
-                    selectedCatId === cat.id
-                      ? "bg-[#c25e2e] text-white shadow-lg shadow-[#c25e2e]/20"
-                      : "bg-[#122029] border border-border/40 text-muted hover:text-gray-200"
-                  }`}
-                >
-                  {cat.name}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Dishes Grid */}
-          {activeCategory && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
-              {activeCategory.menuItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-[#121c21]/30 border border-border/60 p-5 rounded-2xl flex flex-col gap-3 hover:border-[#c25e2e]/30 hover:bg-[#121c21]/60 transition-all duration-300 relative group overflow-hidden shadow-xl"
-                >
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        {item.isVegetarian ? (
-                          <span className="h-3.5 w-3.5 border border-emerald-600 rounded bg-emerald-950 flex items-center justify-center shrink-0" title="Pure Vegetarian">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          </span>
-                        ) : (
-                          <span className="h-3.5 w-3.5 border border-rose-600 rounded bg-rose-950 flex items-center justify-center shrink-0" title="Non-Vegetarian">
-                            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                          </span>
-                        )}
-                        <h4 className="font-extrabold text-slate-100 uppercase tracking-wide group-hover:text-[#e06d34] transition-colors text-sm">
-                          {item.name}
-                        </h4>
-                      </div>
-                      <p className="text-slate-500 text-xs leading-relaxed max-w-xs line-clamp-2 mt-1">{item.description || "Freshly prepared slow-cooked specialty."}</p>
+              {trackResult && (
+                <div className="mt-5">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-xs font-black text-[#6c6255]">#{trackResult.orderNo}</p>
+                      <h3 className="text-xl font-black">{statusLabel(trackResult.status)}</h3>
                     </div>
-                    
-                    <span className="font-extrabold text-sm text-[#e06d34] bg-[#0c1317]/80 px-3 py-1 rounded-xl border border-border/40 font-mono shrink-0">
-                      ₹{Number(item.price).toFixed(0)}
+                    <span className="rounded-full bg-[#128c58]/12 px-3 py-1 text-xs font-black uppercase text-[#128c58]">
+                      ₹{Number(trackResult.total).toFixed(0)}
                     </span>
                   </div>
 
-                  <div className="mt-auto pt-4 border-t border-[#0c1317] flex justify-between items-center">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Tandoor Special</span>
-                    <a
-                      href={`https://wa.me/919296914511?text=add%20${encodeURIComponent(item.name)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-bold text-slate-300 hover:text-white flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300 bg-[#122029] border border-border px-3 py-1.5 rounded-lg hover:border-border/80"
-                    >
-                      Add on WhatsApp <ChevronRight className="h-3.5 w-3.5" />
-                    </a>
+                  <div className="grid grid-cols-6 gap-1">
+                    {statusSteps.map((step, index) => (
+                      <div
+                        key={step}
+                        className={`h-2 rounded-full ${index <= activeStatusIndex ? "bg-[#128c58]" : "bg-black/10"}`}
+                        title={statusLabel(step)}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+                    <div className="rounded-lg bg-[#f8f3ea] p-3">
+                      <span className="block text-[10px] font-black uppercase text-[#6c6255]">Payment</span>
+                      <span className="font-black">{trackResult.paymentStatus}</span>
+                    </div>
+                    <div className="rounded-lg bg-[#f8f3ea] p-3">
+                      <span className="block text-[10px] font-black uppercase text-[#6c6255]">Type</span>
+                      <span className="font-black">{trackResult.deliveryType}</span>
+                    </div>
+                    <div className="rounded-lg bg-[#f8f3ea] p-3">
+                      <span className="block text-[10px] font-black uppercase text-[#6c6255]">Items</span>
+                      <span className="font-black">{trackResult.items?.length || 0}</span>
+                    </div>
                   </div>
                 </div>
+              )}
+
+              {trackError && (
+                <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">
+                  {trackError}
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section id="menu" className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
+          <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-[#8a3b24]">Live Menu</p>
+              <h2 className="mt-2 text-3xl font-black tracking-normal sm:text-4xl">Choose dishes from the real database.</h2>
+            </div>
+            <div className="flex items-center gap-2 text-sm font-bold text-[#6c6255]">
+              <Clock className="h-4 w-4 text-[#8a3b24]" />
+              Fresh availability from admin menu
+            </div>
+          </div>
+
+          {categories.length > 0 && (
+            <div className="mb-6 flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => setSelectedCatId(category.id)}
+                  className={`h-11 shrink-0 rounded-full px-5 text-xs font-black uppercase tracking-wide transition active:scale-95 ${
+                    selectedCatId === category.id
+                      ? "bg-[#213f32] text-white"
+                      : "border border-black/15 bg-white text-[#4d473d] hover:bg-[#fffaf0]"
+                  }`}
+                >
+                  {category.name}
+                </button>
               ))}
+            </div>
+          )}
+
+          {activeCategory ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {activeCategory.menuItems.map((item) => (
+                <article key={item.id} className="rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className={`grid h-4 w-4 place-items-center rounded border ${item.isVegetarian ? "border-[#128c58]" : "border-red-600"}`}>
+                          <span className={`h-2 w-2 rounded-full ${item.isVegetarian ? "bg-[#128c58]" : "bg-red-600"}`} />
+                        </span>
+                        <h3 className="font-black">{item.name}</h3>
+                      </div>
+                      <p className="line-clamp-2 text-sm leading-6 text-[#6c6255]">
+                        {item.description || "Freshly prepared Mirch Masala kitchen special."}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-[#f6c453]/25 px-3 py-1 font-mono text-sm font-black text-[#8a3b24]">
+                      ₹{Number(item.price).toFixed(0)}
+                    </span>
+                  </div>
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMBER}?text=add%20${encodeURIComponent(item.name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex h-10 items-center gap-2 rounded-full border border-black/15 px-4 text-xs font-black uppercase tracking-wide transition hover:bg-[#213f32] hover:text-white active:scale-95"
+                  >
+                    Add On WhatsApp
+                    <MessageCircle className="h-4 w-4" />
+                  </a>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-black/10 bg-white p-8 text-center text-sm font-bold text-[#6c6255]">
+              Menu loading...
             </div>
           )}
         </section>
 
+        <section className="bg-[#1e1c18] py-14 text-white">
+          <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-[#f6c453]">Table Booking</p>
+              <h2 className="mt-2 text-3xl font-black tracking-normal sm:text-4xl">
+                Planning dine-in? Book from WhatsApp.
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-white/68">
+                Customer chooses guests, date and time. Staff approves booking from admin panel.
+              </p>
+            </div>
+            <a
+              href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Book table for 4 guests")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#f6c453] px-7 text-sm font-black uppercase tracking-wide text-[#1e1c18] transition hover:bg-white active:scale-95"
+            >
+              <CalendarCheck className="h-5 w-5" />
+              Book Table
+            </a>
+          </div>
+        </section>
       </main>
 
-      {/* FOOTER */}
-      <footer className="border-t border-border/45 bg-[#0c1317] py-8 shrink-0 text-slate-600 text-center text-xs shadow-inner">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p>© {new Date().getFullYear()} Mirch Masala Bihar Regional Kitchen. Crafted with traditional clay pot heritage.</p>
-          <div className="flex gap-4 select-text">
-            <a href="https://wa.me/919296914511?text=MENU" className="hover:text-slate-400 font-bold transition-colors">WhatsApp Order Desk</a>
-            <span className="text-slate-800">|</span>
-            <Link href="/admin/orders" className="hover:text-slate-400 font-bold transition-colors">Admin Console</Link>
+      <footer className="bg-[#fffaf0] py-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 text-sm font-semibold text-[#6c6255] sm:px-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-[#8a3b24]" />
+            Mirch Masala Restaurant, WhatsApp powered ordering
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <a href={whatsappMenuLink} target="_blank" rel="noopener noreferrer" className="font-black text-[#128c58]">
+              WhatsApp Order
+            </a>
+            <Link href="/login" className="font-black text-[#8a3b24]">
+              Admin Panel
+            </Link>
           </div>
         </div>
       </footer>

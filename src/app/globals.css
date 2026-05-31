@@ -15,7 +15,7 @@ body {
   color: #f3f4f6;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Prevent body scroll, let app scroll inside panels */
+  overflow-x: hidden;
 }
 
 .no-scrollbar {
