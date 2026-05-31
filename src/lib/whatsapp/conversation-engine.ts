@@ -16,6 +16,59 @@ export interface BotReply {
 }
 
 export class WhatsAppConversationEngine {
+  private static wantsMenuFromText(text: string) {
+    const q = text.toUpperCase().trim();
+    const normalized = q.replace(/[^A-Z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    const exactMenuWords = new Set([
+      "YES",
+      "Y",
+      "HA",
+      "HAN",
+      "HAAN",
+      "OK",
+      "OKAY",
+      "SURE",
+      "MENU",
+      "ORDER",
+      "FOOD",
+      "KHANA",
+      "KHAANA",
+    ]);
+
+    return (
+      exactMenuWords.has(normalized) ||
+      normalized.includes("MENU") ||
+      normalized.includes("ORDER") ||
+      normalized.includes("KHANA") ||
+      normalized.includes("KHAANA") ||
+      normalized.includes("DEKHNA")
+    );
+  }
+
+  private static async openMenuCategories(from: string): Promise<BotReply> {
+    const categories = await prisma.category.findMany({
+      orderBy: { position: "asc" },
+    });
+
+    await prisma.whatsAppConversation.update({
+      where: { customerNumber: from },
+      data: { state: "VIEW_CATEGORIES" },
+    });
+
+    await WhatsAppTemplates.sendCategoriesMenu(from, categories);
+
+    return {
+      replyText: "Menu ready. Category tap karein.",
+      replyType: "categories",
+      payload: {
+        options: categories.map((cat) => ({
+          label: `📁 ${cat.name}`,
+          action: `SELECT_CAT_${cat.id}`,
+        })),
+      },
+    };
+  }
+
   /**
    * Main entry point to process an inbound conversational message
    * Returns a BotReply containing reply details and nextState for simulator/JSON consumption
@@ -104,7 +157,7 @@ export class WhatsAppConversationEngine {
     }
 
     // --- CONVERSATIONAL AI AGENT & INTENT ROUTER INTERCEPT ---
-    if (incoming.type === "text" && !action && !structuredTextStates.has(session.state)) {
+    if (incoming.type === "text" && !action && !structuredTextStates.has(session.state) && !["START", "MAIN_MENU"].includes(session.state)) {
       // 1. Zero-latency Deterministic Intent Router
       const routed = await IntentRouter.routeIntent(from, cleanContent);
       if (routed && routed.matched) {
@@ -194,27 +247,8 @@ export class WhatsAppConversationEngine {
           data: { state: "MAIN_MENU" },
         });
 
-        if (action === "BROWSE_MENU") {
-          const categories = await prisma.category.findMany({
-            orderBy: { position: "asc" },
-          });
-
-          await prisma.whatsAppConversation.update({
-            where: { customerNumber: from },
-            data: { state: "VIEW_CATEGORIES" },
-          });
-
-          await WhatsAppTemplates.sendCategoriesMenu(from, categories);
-          return {
-            replyText: "Menu ready. Category tap karein.",
-            replyType: "categories",
-            payload: {
-              options: categories.map((cat) => ({
-                label: `📁 ${cat.name}`,
-                action: `SELECT_CAT_${cat.id}`,
-              })),
-            },
-          };
+        if (action === "BROWSE_MENU" || this.wantsMenuFromText(cleanContent)) {
+          return this.openMenuCategories(from);
         }
 
         if (action === "BOOK_TABLE") {
@@ -262,29 +296,8 @@ export class WhatsAppConversationEngine {
       }
 
       case "MAIN_MENU": {
-        if (action === "BROWSE_MENU" || cleanContent.includes("1") || cleanContent.toUpperCase().includes("MENU")) {
-          // Transition to VIEW_CATEGORIES
-          const categories = await prisma.category.findMany({
-            orderBy: { position: "asc" },
-          });
-
-          await prisma.whatsAppConversation.update({
-            where: { customerNumber: from },
-            data: { state: "VIEW_CATEGORIES" },
-          });
-
-          await WhatsAppTemplates.sendCategoriesMenu(from, categories);
-
-          return {
-            replyText: "Kripya category select karein niche diye gaye list me se click karke:",
-            replyType: "categories",
-            payload: {
-              options: categories.map((cat) => ({
-                label: `📁 ${cat.name}`,
-                action: `SELECT_CAT_${cat.id}`,
-              })),
-            }
-          };
+        if (action === "BROWSE_MENU" || cleanContent.includes("1") || this.wantsMenuFromText(cleanContent)) {
+          return this.openMenuCategories(from);
         }
 
         if (action === "BOOK_TABLE" || cleanContent.includes("2") || cleanContent.toUpperCase().includes("BOOK")) {
