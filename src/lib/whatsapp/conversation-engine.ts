@@ -147,6 +147,27 @@ export class WhatsAppConversationEngine {
       "AWAITING_PAYMENT_CONFIRM",
     ]);
 
+    // --- SYSTEM RESET TRIGGER ---
+    // Keep this before HANDOFF so staff takeover can be released by typing reset/start/menu.
+    if (cleanContent.toUpperCase() === "RESET" || cleanContent.toUpperCase() === "START" || cleanContent.toUpperCase() === "MENU") {
+      await prisma.whatsAppConversation.update({
+        where: { customerNumber: from },
+        data: { state: "MAIN_MENU", activeCart: null, currentCategoryId: null },
+      });
+      await WhatsAppTemplates.sendWelcomeMenu(from);
+      return {
+        replyText: "Namaste! Welcome back to Mirch Masala. Choose an option:",
+        replyType: "categories",
+        payload: {
+          options: [
+            { label: "🍽️ View Menu & Order", action: "BROWSE_MENU" },
+            { label: "📅 Book a Table", action: "BOOK_TABLE" },
+            { label: "🛵 Track My Order", action: "TRACK_ORDER" },
+          ]
+        }
+      };
+    }
+
     // --- STAFF TAKEOVER HANDOFF GUARD ---
     if (session.state === "HANDOFF") {
       console.log(`🔕 [Staff Takeover] Muting AI and automated state machine for ${from}. Conversation is handled manually.`);
@@ -214,26 +235,6 @@ export class WhatsAppConversationEngine {
     let replyText = "";
     let replyType: BotReply["replyType"] = "text";
     let payload: any = undefined;
-
-    // --- SYSTEM RESET TRIGGER ---
-    if (cleanContent.toUpperCase() === "RESET" || cleanContent.toUpperCase() === "START" || cleanContent.toUpperCase() === "MENU") {
-      await prisma.whatsAppConversation.update({
-        where: { customerNumber: from },
-        data: { state: "MAIN_MENU", activeCart: null, currentCategoryId: null },
-      });
-      await WhatsAppTemplates.sendWelcomeMenu(from);
-      return {
-        replyText: "Namaste! Welcome back to Mirch Masala. Choose an option:",
-        replyType: "categories",
-        payload: {
-          options: [
-            { label: "🍽️ View Menu & Order", action: "BROWSE_MENU" },
-            { label: "📅 Book a Table", action: "BOOK_TABLE" },
-            { label: "🛵 Track My Order", action: "TRACK_ORDER" },
-          ]
-        }
-      };
-    }
 
     // =========================================================================
     // STATE MACHINE TRANSITIONS
