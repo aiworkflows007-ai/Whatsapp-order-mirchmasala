@@ -8,6 +8,8 @@ import {
   CalendarCheck,
   CheckCircle2,
   Clock,
+  CreditCard,
+  Flame,
   MapPin,
   MessageCircle,
   Phone,
@@ -16,6 +18,7 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  Star,
   Truck,
   Utensils,
 } from "lucide-react";
@@ -81,6 +84,30 @@ const agentFlow = [
     title: "Kitchen Updates",
     text: "Preparing, ready and delivery messages go back to customer.",
     icon: Truck,
+  },
+];
+
+const trustStats = [
+  { label: "WhatsApp first", value: "0 app" },
+  { label: "Payment choices", value: "3 ways" },
+  { label: "Live updates", value: "6 steps" },
+];
+
+const ambienceTiles = [
+  {
+    title: "Fresh Dum Biryani",
+    text: "Layered rice, warm spices, sealed aroma.",
+    image: "https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?auto=format&fit=crop&w=900&q=80",
+  },
+  {
+    title: "Tandoor & Grill",
+    text: "Smoky starters, paneer and kebab style plates.",
+    image: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?auto=format&fit=crop&w=900&q=80",
+  },
+  {
+    title: "Family Table",
+    text: "Book dine-in from WhatsApp and let staff confirm.",
+    image: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=80",
   },
 ];
 
@@ -155,7 +182,7 @@ export default function Home() {
     : -1;
 
   return (
-    <div className="min-h-screen bg-[#f8f3ea] text-[#1e1c18] selection:bg-emerald-700 selection:text-white">
+    <div className="min-h-screen bg-[#f8f3ea] pb-20 text-[#1e1c18] selection:bg-emerald-700 selection:text-white md:pb-0">
       <header className="sticky top-0 z-50 border-b border-black/10 bg-[#fffaf0]/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <a href="#" className="flex items-center gap-3">
@@ -199,7 +226,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/20" />
           <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#f8f3ea] to-transparent" />
 
-          <div className="relative mx-auto flex min-h-[74svh] max-w-7xl items-center px-4 py-12 sm:px-6">
+          <div className="relative mx-auto grid min-h-[74svh] max-w-7xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_420px]">
             <div className="max-w-3xl">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.22em] backdrop-blur">
                 <Sparkles className="h-4 w-4 text-[#f6c453]" />
@@ -247,6 +274,58 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
+            <div className="hidden lg:block">
+              <div className="relative">
+                <div className="overflow-hidden rounded-[2rem] border border-white/15 bg-[#101820]/92 p-4 shadow-2xl backdrop-blur">
+                  <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-10 w-10 place-items-center rounded-full bg-[#128c58] text-lg">🌶️</span>
+                      <div>
+                        <p className="text-sm font-black">Mirch Masala Bot</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-300">online now</p>
+                      </div>
+                    </div>
+                    <MessageCircle className="h-5 w-5 text-white/55" />
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-white/10 p-3 text-sm leading-6 text-white/85">
+                      Namaste! Aaj kya khayenge? Button tap karein.
+                    </div>
+                    <div className="ml-auto max-w-[80%] rounded-2xl rounded-tr-sm bg-[#128c58] p-3 text-sm font-bold">
+                      🍽️ View Menu
+                    </div>
+                    <div className="max-w-[90%] rounded-2xl rounded-tl-sm bg-white/10 p-3">
+                      <p className="text-xs font-black text-[#f6c453]">Chef Sanjay recommends</p>
+                      <p className="mt-1 text-sm font-bold">Hyderabadi Chicken Biryani</p>
+                      <p className="text-xs text-white/60">₹360 - Tap to add in cart</p>
+                    </div>
+                    <div className="ml-auto max-w-[78%] rounded-2xl rounded-tr-sm bg-[#128c58] p-3 text-sm font-bold">
+                      💳 UPI / Card
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/10 pt-4">
+                    {trustStats.map((stat) => (
+                      <div key={stat.label} className="rounded-xl bg-white/10 p-3 text-center">
+                        <p className="text-sm font-black text-[#f6c453]">{stat.value}</p>
+                        <p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-white/50">{stat.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="absolute -bottom-6 -left-6 w-36 rounded-2xl border border-black/10 bg-white p-3 text-[#1e1c18] shadow-xl">
+                  <img
+                    src="/mirch-masala-whatsapp-qr.png"
+                    alt="WhatsApp QR preview"
+                    className="h-20 w-20 rounded-lg"
+                  />
+                  <p className="mt-2 text-[10px] font-black uppercase leading-tight">Scan to start order</p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -274,7 +353,10 @@ export default function Home() {
                 <h2 className="text-base font-black">Direct WhatsApp Link</h2>
                 <p className="text-xs font-semibold text-white/65">No app download for customer.</p>
               </div>
-              <Phone className="h-5 w-5 text-[#f6c453]" />
+              <div className="flex items-center gap-2 text-[#f6c453]">
+                <Phone className="h-5 w-5" />
+                <CreditCard className="h-5 w-5" />
+              </div>
             </div>
             <p className="break-all rounded-lg border border-white/15 bg-white/10 p-3 font-mono text-xs text-white/85">
               wa.me/{WHATSAPP_NUMBER}?text=MENU
@@ -303,6 +385,51 @@ export default function Home() {
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#128c58]" />
                   <span>{item}</span>
                 </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-4 pb-14 sm:px-6">
+          <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
+              <div className="relative min-h-[360px]">
+                <img
+                  src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1400&q=80"
+                  alt="Warm restaurant dining table"
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                  <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] backdrop-blur">
+                    <Flame className="h-3.5 w-3.5 text-[#f6c453]" />
+                    Restaurant Experience
+                  </p>
+                  <h2 className="max-w-2xl text-3xl font-black tracking-normal sm:text-4xl">
+                    A food brand that works in WhatsApp, on the table, and in the kitchen.
+                  </h2>
+                  <p className="mt-3 max-w-xl text-sm leading-7 text-white/75">
+                    Customers scan, order, pay, and track. Staff sees every order from the admin app and kitchen status keeps everyone calm.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+              {ambienceTiles.map((tile) => (
+                <article key={tile.title} className="group overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
+                  <div className="flex h-full min-h-[112px] gap-3 p-3">
+                    <img
+                      src={tile.image}
+                      alt={tile.title}
+                      className="h-24 w-24 shrink-0 rounded-xl object-cover transition duration-500 group-hover:scale-[1.03]"
+                    />
+                    <div className="flex min-w-0 flex-col justify-center">
+                      <h3 className="font-black leading-tight">{tile.title}</h3>
+                      <p className="mt-1 text-sm leading-5 text-[#6c6255]">{tile.text}</p>
+                    </div>
+                  </div>
+                </article>
               ))}
             </div>
           </div>
@@ -348,7 +475,10 @@ export default function Home() {
           <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.24em] text-[#8a3b24]">Signature Picks</p>
-              <h2 className="mt-2 text-3xl font-black tracking-normal sm:text-4xl">Food worth opening WhatsApp for.</h2>
+              <h2 className="mt-2 flex items-center gap-3 text-3xl font-black tracking-normal sm:text-4xl">
+                <Star className="h-7 w-7 fill-[#f6c453] text-[#8a3b24]" />
+                Food worth opening WhatsApp for.
+              </h2>
             </div>
             <a href="#menu" className="inline-flex h-11 items-center gap-2 rounded-full border border-black/15 px-5 text-xs font-black uppercase tracking-wide transition hover:bg-white">
               See Full Menu
@@ -570,6 +700,27 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-black/10 bg-[#fffaf0]/95 p-3 shadow-2xl backdrop-blur md:hidden">
+        <div className="mx-auto flex max-w-md gap-2">
+          <a
+            href={whatsappMenuLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[#128c58] text-sm font-black uppercase tracking-wide text-white active:scale-95"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Order Now
+          </a>
+          <a
+            href="#tracker"
+            className="grid h-12 w-12 place-items-center rounded-full border border-black/15 bg-white text-[#213f32] active:scale-95"
+            title="Track order"
+          >
+            <Search className="h-5 w-5" />
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
