@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 export default function AdminQRGenerator() {
-  const [phoneNumber, setPhoneNumber] = useState("919876543210");
+  const [phoneNumber, setPhoneNumber] = useState("919296914511");
   const [startMessage, setStartMessage] = useState("MENU");
   const [posterTitle, setPosterTitle] = useState("Mirch Masala Restaurant");
   const [copied, setCopied] = useState(false);
